@@ -7,15 +7,36 @@
   --foreground: #171717;
 }
 
-@media (prefers-color-scheme: dark) {
+/* We'll implement dark mode later */
+/* @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
   }
-}
+} */
 
 body {
   color: var(--foreground);
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Override prose styles */
+.prose {
+  --tw-prose-body: var(--foreground);
+  --tw-prose-headings: var(--foreground);
+  --tw-prose-lead: var(--foreground);
+  --tw-prose-links: #1d4ed8;
+  --tw-prose-bold: var(--foreground);
+  --tw-prose-counters: var(--foreground);
+  --tw-prose-bullets: var(--foreground);
+  --tw-prose-hr: var(--foreground);
+  --tw-prose-quotes: var(--foreground);
+  --tw-prose-quote-borders: #e5e7eb;
+  --tw-prose-captions: #6b7280;
+  --tw-prose-code: var(--foreground);
+  --tw-prose-pre-code: #e5e7eb;
+  --tw-prose-pre-bg: #1f2937;
+  --tw-prose-th-borders: #d1d5db;
+  --tw-prose-td-borders: #e5e7eb;
 }

@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  app:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/workspace
+      - node_modules:/workspace/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - SUPABASE_URL=http://kong:8000
+      - SUPABASE_ANON_KEY=${ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY}
+    depends_on:
+      - studio
+    working_dir: /workspace
+    command: sleep infinity
+
+  studio:
+    container_name: supabase-studio
+    image: supabase/studio:20250113-83c9420
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      STUDIO_PG_META_URL: http://meta:8080
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL:-http://localhost:8000}
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      AUTH_JWT_SECRET: ${JWT_SECRET}
+
+  db:
+    container_name: supabase-db
+    image: supabase/postgres:15.1.0.117
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      POSTGRES_DB: postgres
+
+  kong:
+    container_name: supabase-kong
+    image: kong:2.8.1
+    restart: unless-stopped
+    ports:
+      - "8000:8000/tcp"
+      - "8443:8443/tcp"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl
+    volumes:
+      - ./volumes/api:/var/lib/kong
+
+volumes:
+  node_modules: 

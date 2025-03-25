@@ -1,6 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 // TODO: Replace with actual auth state from Supabase
 const useAuth = () => {
@@ -43,22 +45,46 @@ export default function Navigation() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { isAuthenticated } = useAuth();
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const handleDropdownClick = (dropdown: string) => {
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setOpenDropdown(null);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const handleDropdownClick = (dropdown: string, event: React.MouseEvent) => {
+    event.stopPropagation();
     setOpenDropdown(openDropdown === dropdown ? null : dropdown);
+  };
+
+  const closeDropdowns = () => {
+    setOpenDropdown(null);
+    setIsMobileMenuOpen(false);
   };
 
   const AuthButton = () => (
     <Link
       href={isAuthenticated ? "/members" : "/login"}
-      className="bg-yellow-500 text-white hover:bg-yellow-600 px-4 py-2 rounded-md text-sm font-medium"
+      className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md text-sm font-medium"
+      onClick={closeDropdowns}
     >
       {isAuthenticated ? "Members Area" : "Login/Register"}
     </Link>
   );
 
   return (
-    <nav className="bg-white shadow-md">
+    <nav className="bg-[#1a1f36] shadow-md">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
@@ -74,19 +100,19 @@ export default function Navigation() {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:block">
+          <div className="hidden md:block" ref={dropdownRef}>
             <div className="flex items-center space-x-4">
               <Link
                 href="/"
-                className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                className="text-white hover:text-yellow-500 px-3 py-2 rounded-md text-sm font-medium"
               >
                 Home
               </Link>
 
               <div className="relative">
                 <button
-                  onClick={() => handleDropdownClick("getInvolved")}
-                  className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                  onClick={(e) => handleDropdownClick("getInvolved", e)}
+                  className="text-white hover:text-yellow-500 px-3 py-2 rounded-md text-sm font-medium"
                 >
                   Get Involved
                 </button>
@@ -98,6 +124,7 @@ export default function Navigation() {
                           key={item.href}
                           href={item.href}
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={closeDropdowns}
                         >
                           {item.label}
                         </Link>
@@ -109,8 +136,8 @@ export default function Navigation() {
 
               <div className="relative">
                 <button
-                  onClick={() => handleDropdownClick("whoWeAre")}
-                  className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                  onClick={(e) => handleDropdownClick("whoWeAre", e)}
+                  className="text-white hover:text-yellow-500 px-3 py-2 rounded-md text-sm font-medium"
                 >
                   Who We Are
                 </button>
@@ -126,6 +153,7 @@ export default function Navigation() {
                             item.external ? "noopener noreferrer" : undefined
                           }
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={closeDropdowns}
                         >
                           {item.label}
                           {item.external && (
@@ -142,8 +170,8 @@ export default function Navigation() {
 
               <div className="relative">
                 <button
-                  onClick={() => handleDropdownClick("caving")}
-                  className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                  onClick={(e) => handleDropdownClick("caving", e)}
+                  className="text-white hover:text-yellow-500 px-3 py-2 rounded-md text-sm font-medium"
                 >
                   Caving
                 </button>
@@ -155,6 +183,7 @@ export default function Navigation() {
                           key={item.href}
                           href={item.href}
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={closeDropdowns}
                         >
                           {item.label}
                         </Link>
@@ -172,7 +201,7 @@ export default function Navigation() {
           <div className="md:hidden">
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-yellow-500"
+              className="inline-flex items-center justify-center p-2 rounded-md text-white hover:text-yellow-500 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-yellow-500"
             >
               <span className="sr-only">Open main menu</span>
               {!isMobileMenuOpen ? (
@@ -213,24 +242,25 @@ export default function Navigation() {
 
       {/* Mobile menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden">
+        <div className="md:hidden bg-[#1a1f36]">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
             <Link
               href="/"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+              className="block px-3 py-2 rounded-md text-base font-medium text-white hover:text-yellow-500"
             >
               Home
             </Link>
 
             <div className="space-y-1">
-              <div className="px-3 py-2 text-base font-medium text-gray-700">
+              <div className="px-3 py-2 text-base font-medium text-white">
                 Get Involved
               </div>
               {navItems.getInvolved.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 pl-6"
+                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-yellow-500 pl-6"
+                  onClick={closeDropdowns}
                 >
                   {item.label}
                 </Link>
@@ -238,7 +268,7 @@ export default function Navigation() {
             </div>
 
             <div className="space-y-1">
-              <div className="px-3 py-2 text-base font-medium text-gray-700">
+              <div className="px-3 py-2 text-base font-medium text-white">
                 Who We Are
               </div>
               {navItems.whoWeAre.map((item) => (
@@ -247,7 +277,8 @@ export default function Navigation() {
                   href={item.href}
                   target={item.external ? "_blank" : undefined}
                   rel={item.external ? "noopener noreferrer" : undefined}
-                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 pl-6"
+                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-yellow-500 pl-6"
+                  onClick={closeDropdowns}
                 >
                   {item.label}
                   {item.external && (
@@ -258,21 +289,24 @@ export default function Navigation() {
             </div>
 
             <div className="space-y-1">
-              <div className="px-3 py-2 text-base font-medium text-gray-700">
+              <div className="px-3 py-2 text-base font-medium text-white">
                 Caving
               </div>
               {navItems.caving.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 pl-6"
+                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-yellow-500 pl-6"
+                  onClick={closeDropdowns}
                 >
                   {item.label}
                 </Link>
               ))}
             </div>
 
-            <AuthButton />
+            <div className="px-3 py-2">
+              <AuthButton />
+            </div>
           </div>
         </div>
       )}

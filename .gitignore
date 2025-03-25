@@ -35,4 +35,8 @@ yarn-error.log*
 next-env.d.ts
 
 # temporary directories
-/temp_next/ 
+/temp_next/
+
+# Supabase
+supabase/.temp/
+supabase/.temp 
