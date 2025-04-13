@@ -1,135 +1,90 @@
-import { createClient } from "@/utils/supabase/server";
-import { redirect } from "next/navigation";
+'use client';
 
-interface MemberDetails {
-  id: number;
-  user_id: string;
-  created_at: string;
-  status: "member" | "nonmember";
-  expires: string;
-}
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSupabase } from '@/utils/supabase/SupabaseContext';
+import type { Member } from '@/types';
 
-export default async function MembersPage() {
-  const supabase = await createClient();
+export default function MembersPage() {
+  const router = useRouter();
+  const supabase = useSupabase();
+  const [member, setMember] = useState<Member | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Get and verify the session
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) {
-    redirect("/login");
-  }
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        router.push('/login');
+        return;
+      }
 
-  // Get authenticated user data
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-  if (userError || !user) {
-    console.error("Error fetching user:", userError);
-    redirect("/login");
-  }
+      const { data } = await supabase
+        .from('members')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
 
-  console.log("Authenticated user ID:", user.id); // Debug log
+      setMember(data);
+      setLoading(false);
+    };
 
-  // Fetch member details from database with explicit type
-  const { data: memberData, error: memberError } = await supabase
-    .from("members")
-    .select("id, user_id, created_at, status, expires")
-    .eq("user_id", user.id)
-    .single();
+    checkAuth();
+  }, [router, supabase]);
 
-  if (memberError) {
-    console.error("Error fetching member details:", {
-      error: memberError,
-      code: memberError.code,
-      message: memberError.message,
-      details: memberError.details,
-      hint: memberError.hint,
-      user_id: user.id,
-    });
-  }
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/');
+  };
 
-  // Debug log for member data
-  console.log("Member query result:", { memberData, error: memberError });
-
-  const memberDetails = memberData as MemberDetails;
-
-  // If no member details found, show appropriate message
-  if (!memberDetails) {
+  if (loading) {
     return (
       <main className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold mb-8">TSA Members Area</h1>
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-2xl font-semibold mb-4">Welcome, {user.email}</h2>
-          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-            <p className="text-yellow-700">
-              Your membership details could not be found. If you believe this is
-              an error, please contact the TSA membership coordinator.
-            </p>
-            <p className="text-yellow-700 mt-2">Reference ID: {user.id}</p>
-          </div>
-        </div>
+        <div className="text-center">Loading...</div>
       </main>
     );
   }
 
   return (
     <main className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold mb-8">TSA Members Area</h1>
+      <div className="max-w-2xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-4xl font-bold">Members Area</h1>
+          <button
+            onClick={handleLogout}
+            className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+          >
+            Logout
+          </button>
+        </div>
 
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-2xl font-semibold mb-4">Welcome, {user.email}</h2>
-
-        <div className="space-y-6">
-          <div className="border-b pb-4">
-            <h3 className="text-lg font-medium mb-2">Member Resources</h3>
-            <ul className="list-disc list-inside space-y-2">
-              <li>Access to The Texas Caver magazine archives</li>
-              <li>Member directory</li>
-              <li>Project documentation</li>
-            </ul>
+        {member?.editor && (
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold mb-4">Editor Tools</h2>
+            <a
+              href="/editor"
+              className="inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            >
+              Content Editor
+            </a>
           </div>
+        )}
 
+        <div className="bg-white shadow rounded-lg p-6">
+          <h2 className="text-2xl font-bold mb-4">Your Profile</h2>
           <div className="space-y-4">
             <div>
-              <h3 className="text-lg font-medium mb-2">Account Details</h3>
-              <p>
-                <strong>Email:</strong> {user.email}
-              </p>
-              <p>
-                <strong>Account created:</strong>{" "}
-                {new Date(user.created_at).toLocaleDateString()}
+              <h3 className="font-medium">Status</h3>
+              <p className="text-gray-600">
+                {member?.editor ? 'Editor' : 'Member'}
               </p>
             </div>
-
             <div>
-              <h3 className="text-lg font-medium mb-2">Membership Status</h3>
-              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                <p>
-                  <strong>Status:</strong>{" "}
-                  <span
-                    className={`capitalize ${
-                      memberDetails.status === "member"
-                        ? "text-green-600"
-                        : "text-yellow-600"
-                    }`}
-                  >
-                    {memberDetails.status}
-                  </span>
-                </p>
-                <p>
-                  <strong>Member ID:</strong> {memberDetails.id}
-                </p>
-                <p>
-                  <strong>Membership Expires:</strong>{" "}
-                  {new Date(memberDetails.expires).toLocaleDateString()}
-                </p>
-                <p>
-                  <strong>Joined TSA:</strong>{" "}
-                  {new Date(memberDetails.created_at).toLocaleDateString()}
-                </p>
-              </div>
+              <h3 className="font-medium">Member Since</h3>
+              <p className="text-gray-600">
+                {new Date(member?.created_at || '').toLocaleDateString()}
+              </p>
             </div>
           </div>
         </div>

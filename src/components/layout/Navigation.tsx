@@ -3,11 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
-
-// TODO: Replace with actual auth state from Supabase
-const useAuth = () => {
-  return { isAuthenticated: false }; // Temporary mock
-};
+import { usePathname } from 'next/navigation';
+import { useSupabase } from '@/utils/supabase/SupabaseContext';
 
 const navItems = {
   main: [
@@ -42,10 +39,33 @@ const navItems = {
 };
 
 export default function Navigation() {
+  const pathname = usePathname();
+  const supabase = useSupabase();
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { isAuthenticated } = useAuth();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isEditor, setIsEditor] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        setIsAuthenticated(true);
+        
+        const { data: member } = await supabase
+          .from('members')
+          .select('editor')
+          .eq('user_id', user.id)
+          .single();
+
+        setIsEditor(member?.editor || false);
+      }
+    };
+
+    checkAuth();
+  }, [supabase]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -73,15 +93,11 @@ export default function Navigation() {
     setIsMobileMenuOpen(false);
   };
 
-  const AuthButton = () => (
-    <Link
-      href={isAuthenticated ? "/members" : "/login"}
-      className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md text-sm font-medium"
-      onClick={closeDropdowns}
-    >
-      {isAuthenticated ? "Members Area" : "Login/Register"}
-    </Link>
-  );
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setIsAuthenticated(false);
+    setIsEditor(false);
+  };
 
   return (
     <nav className="bg-[#1a1f36] shadow-md">
@@ -104,7 +120,11 @@ export default function Navigation() {
             <div className="flex items-center space-x-4">
               <Link
                 href="/"
-                className="text-white hover:text-yellow-500 px-3 py-2 rounded-md text-sm font-medium"
+                className={`text-white hover:text-yellow-500 px-3 py-2 rounded-md text-sm font-medium ${
+                  pathname === '/'
+                    ? 'bg-gray-900'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
               >
                 Home
               </Link>
@@ -112,7 +132,11 @@ export default function Navigation() {
               <div className="relative">
                 <button
                   onClick={(e) => handleDropdownClick("getInvolved", e)}
-                  className="text-white hover:text-yellow-500 px-3 py-2 rounded-md text-sm font-medium"
+                  className={`text-white hover:text-yellow-500 px-3 py-2 rounded-md text-sm font-medium ${
+                    pathname === '/join-tsa' || pathname === '/texas-grottos' || pathname === '/calendar'
+                      ? 'bg-gray-900'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
                 >
                   Get Involved
                 </button>
@@ -137,7 +161,11 @@ export default function Navigation() {
               <div className="relative">
                 <button
                   onClick={(e) => handleDropdownClick("whoWeAre", e)}
-                  className="text-white hover:text-yellow-500 px-3 py-2 rounded-md text-sm font-medium"
+                  className={`text-white hover:text-yellow-500 px-3 py-2 rounded-md text-sm font-medium ${
+                    pathname === '/about' || pathname === '/tsa-officers' || pathname === '/texas-caver-magazines-archive' || pathname === 'https://hall.cavetexas.org/'
+                      ? 'bg-gray-900'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
                 >
                   Who We Are
                 </button>
@@ -171,7 +199,11 @@ export default function Navigation() {
               <div className="relative">
                 <button
                   onClick={(e) => handleDropdownClick("caving", e)}
-                  className="text-white hover:text-yellow-500 px-3 py-2 rounded-md text-sm font-medium"
+                  className={`text-white hover:text-yellow-500 px-3 py-2 rounded-md text-sm font-medium ${
+                    pathname === '/convention' || pathname === '/tcr' || pathname === '/cave-rescue' || pathname === '/cbsp' || pathname === '/gcsna'
+                      ? 'bg-gray-900'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
                 >
                   Caving
                 </button>
@@ -193,7 +225,51 @@ export default function Navigation() {
                 )}
               </div>
 
-              <AuthButton />
+              {isAuthenticated ? (
+                <>
+                  <Link
+                    href="/members"
+                    className={`bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md text-sm font-medium ${
+                      pathname === '/members'
+                        ? 'bg-gray-900'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    Members
+                  </Link>
+
+                  {isEditor && (
+                    <Link
+                      href="/editor"
+                      className={`bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md text-sm font-medium ${
+                        pathname === '/editor'
+                          ? 'bg-gray-900'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      Editor
+                    </Link>
+                  )}
+
+                  <button
+                    onClick={handleLogout}
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md text-sm font-medium"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <Link
+                  href="/login"
+                  className={`bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md text-sm font-medium ${
+                    pathname === '/login'
+                      ? 'bg-gray-900'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  Login
+                </Link>
+              )}
             </div>
           </div>
 
@@ -305,7 +381,39 @@ export default function Navigation() {
             </div>
 
             <div className="px-3 py-2">
-              <AuthButton />
+              {isAuthenticated ? (
+                <>
+                  <Link
+                    href="/members"
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md text-sm font-medium"
+                  >
+                    Members
+                  </Link>
+
+                  {isEditor && (
+                    <Link
+                      href="/editor"
+                      className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md text-sm font-medium"
+                    >
+                      Editor
+                    </Link>
+                  )}
+
+                  <button
+                    onClick={handleLogout}
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md text-sm font-medium"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <Link
+                  href="/login"
+                  className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md text-sm font-medium"
+                >
+                  Login
+                </Link>
+              )}
             </div>
           </div>
         </div>

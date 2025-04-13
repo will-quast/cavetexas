@@ -1,27 +1,49 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useQuery } from '@tanstack/react-query';
+import { useSupabase } from '@/utils/supabase/SupabaseContext';
+import type { Page } from '@/types';
+
+export default function HomePage() {
+  const supabase = useSupabase();
+
+  const { data: pages, isLoading } = useQuery({
+    queryKey: ['pages'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('pages')
+        .select('*')
+        .order('title');
+      return data as Page[];
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <main className="container mx-auto px-4 py-8">
+        <div className="text-center">Loading...</div>
+      </main>
+    );
+  }
+
   return (
-    <main className="flex min-h-screen flex-col items-center">
-      <div className="w-full bg-gray-900 text-white">
-        <div className="container mx-auto px-4 py-16">
-          <h1 className="text-4xl font-bold mb-4">
-            Texas Speleological Association
-          </h1>
-          <p className="text-xl">
-            Promoting and coordinating responsible caving in Texas
-          </p>
-        </div>
+    <main className="container mx-auto px-4 py-8">
+      <h1 className="text-4xl font-bold mb-8">Welcome to Cave Texas</h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {pages?.map((page) => (
+          <div
+            key={page.id}
+            className="bg-white shadow rounded-lg p-6 hover:shadow-lg transition-shadow"
+          >
+            <h2 className="text-2xl font-bold mb-4">{page.title}</h2>
+            <div
+              className="prose max-w-none"
+              dangerouslySetInnerHTML={{ __html: page.content }}
+            />
+          </div>
+        ))}
       </div>
-
-      <section className="container mx-auto px-4 py-12">
-        <h2 className="text-3xl font-bold mb-6">Welcome to TSA</h2>
-        <p className="text-lg">
-          The Texas Speleological Association (TSA) is an organization of cavers
-          and caving clubs dedicated to the exploration, study, and conservation
-          of caves in Texas.
-        </p>
-      </section>
     </main>
   );
 }

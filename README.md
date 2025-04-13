@@ -1,108 +1,47 @@
 # Texas Speleological Association Website Rewrite
 
-This project is a complete rewrite of [cavetexas.org](https://cavetexas.org), modernizing it from a Drupal-based site to a Next.js application.
+This project is a complete rewrite of [cavetexas.org](https://cavetexas.org) website. The goal is to modernizing from a Drupal-based site to a Next.js application, to simplify security updates for long
+term support, and add new capabilities provided by the modern framework. The website consists of a Home page with navigation to informational pages about the organization and our activities and access to the Texas Caver Magazine online, which requires a Supabase login for members to restrict access to new editions. Members can be given the Editor role which allows them to edit the website page content.
+
 
 ## Repository
 
 GitHub: [https://github.com/will-quast/cavetexas](https://github.com/will-quast/cavetexas)
 
-## Project Status
-
-### Completed
-
-- ✅ Project initialization with Next.js 14, TypeScript, and Tailwind CSS
-- ✅ Development environment setup with devcontainer
-- ✅ Navigation component with mobile responsiveness
-- ✅ Basic route structure
-- ✅ Content management system with Markdown
-- ✅ Initial pages created:
-  - About TSA
-  - Join TSA (Membership)
-  - Texas Grottos
-
-### In Progress
-
-- 🔄 Content migration
-- 🔄 Route implementation
-- ✅ Authentication setup with Supabase
-  - ✅ Supabase project created
-  - ✅ Environment variables configured
-  - ✅ Authentication middleware implemented
-  - ✅ Login/Register UI implementation
-  - ✅ Protected routes testing
-  - ✅ Member database integration
-
-### Pending
-
-- ⏳ Protected routes for members area
-  - ✅ Basic member profile display
-  - 🔄 Member profile management
-  - ⏳ Password reset functionality
-  - ⏳ Session management
-- ⏳ PDF management system
-- ⏳ Calendar integration
-- ⏳ Deployment configuration
 
 ## Content Management
 
-The website uses a file-based content management system using Markdown files with dynamic routing. This approach provides:
+The website uses a WYSIWYG editor-based content management system with Supabase as the backend. This approach provides:
 
-- Simple content editing through standard Markdown files
-- Version control through Git
-- Easy collaboration for content contributors
+- Easy content editing through a visual interface
+- CRUD operations for content pages
+- Role-based access control for editors
+- Caching for improved performance
 - Separation of content from presentation
-- Automatic route generation from markdown files
 
 ### Content Structure
 
-```
-src/content/
-├── pages/           # Static page content (auto-routed)
-│   ├── about.md     # -> /about
-│   ├── join-tsa.md  # -> /join-tsa
-│   └── ...
-├── events/          # Event-related content
-│   ├── convention.md
-│   ├── tcr.md
-│   └── ...
-└── projects/        # Project-related content
-    ├── cbsp.md
-    ├── gcsna.md
-    └── ...
-```
+Content is stored in the Supabase database with the following structure:
 
-### Markdown File Format
-
-Each content file follows this structure:
-
-```markdown
----
-title: Page Title
-description: SEO description
-[additional frontmatter fields as needed]
----
-
-# Main Content
-
-Regular markdown content goes here...
+```sql
+create table pages (
+  id uuid default uuid_generate_v4() primary key,
+  slug text not null unique,
+  title text not null,
+  content text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  created_by uuid references auth.users not null,
+  updated_by uuid references auth.users not null
+);
 ```
 
-### Dynamic Routing
+### Editor Access
 
-The site uses Next.js dynamic routing to automatically generate pages from markdown files:
-
-- Files in `src/content/pages/` are automatically routed to their corresponding URLs
-- For example, `about.md` becomes `/about`
-- Special routes like `/members` are handled separately with custom React components
-- SEO metadata is automatically generated from frontmatter
-- 404 handling is built in for non-existent routes
-
-### Adding New Content
-
-1. Create a new `.md` file in the appropriate content directory
-2. Include required frontmatter (title, description)
-3. Write content using standard Markdown syntax
-4. The page will be automatically available at its corresponding route
+To access the editor:
+1. Navigate to `/editor`
+2. Log in with your Supabase account
+3. Your account must have editor privileges in the `members` table
 
 ## Authentication
 
@@ -130,36 +69,7 @@ The following routes require authentication:
 - `/members/*` - Members area and related pages
 - `/texas-caver-magazines/*` - Protected PDF downloads
 - `/profile/*` - User profile management
-
-### Environment Variables
-
-Required environment variables for authentication:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=your-project-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-```
-
-## Route Structure
-
-```
-/ (Home)
-├── /join-tsa (Become A TSA Member)
-├── /texas-grottos (Find Your Local Grotto)
-├── /calendar (Calendar)
-├── /about (About TSA)
-├── /tsa-officers (Officers)
-├── /texas-caver-magazines-archive (The Texas Caver Magazine)
-├── /convention (Spring Convention)
-├── /tcr (Texas Caver's Reunion)
-├── /cave-rescue (Cave Rescue)
-├── /cbsp (Colorado Bend State Park Project)
-├── /gcsna (Government Canyon SNA Project)
-├── /login (Login/Register Page)
-├── /members (Protected Members Area)
-└── External Links
-    └── https://hall.cavetexas.org/ (The Hall of Texas and Mexico Cavers)
-```
+- `/editor/` - Content editor
 
 ## Technical Requirements
 
@@ -167,7 +77,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
 - Modernization of www.cavetexas.org from Drupal to Next.js
 - Next.js 14 with TypeScript and Tailwind CSS
-- Content and routing from Markdown files for easy editing
+- WYSIWYG editor for content management
 - Keep current color scheme and cave/nature imagery approach
 - Modern web practices while maintaining the current visual identity
 
@@ -179,60 +89,76 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 - Members Area features:
   1. Protected PDF downloads ("Texas Caver" magazine)
   2. Password reset functionality
-  3. Logout option
+  3. Editor access if user has the "editor" role
+  4. Logout option
 - Single membership level ("member")
 - Manual signup process handled by admin
 - Admin functionality handled through Supabase dashboard
 
 ### Content Management
 
-- Public content pages are sourced from Markdown files
-- No headless CMS needed, content managed through GitHub commits
-- Members only PDF files (20-30 files) will be stored on a CDN
-- Members only PDF metadata in frontmatter in Markdown files
+- Content managed through WYSIWYG editor
+- Role-based access control for editors
+- Real-time content updates
+- Caching for improved performance
 
 ### Deployment
 
 - Host: Hawk Host (existing paid hosting)
 - No Vercel deployment needed
 
-## Development Setup
-
-The project uses Docker Compose for the development environment, providing a consistent setup across different operating systems. The setup includes:
+## Development Tools
 
 - Node.js 20 with TypeScript
 - Supabase Studio for database management
 - PostgreSQL database
 - Kong API Gateway
 - ESLint and Prettier for code formatting
+- Docker and Docker Compose of local development
+
+## Development Guide
 
 ### Prerequisites
 
-1. Install Docker Desktop
-2. Install Docker Compose (included with Docker Desktop)
-3. Clone the repository:
+1. Install Docker Desktop & Docker Compose
+2. Clone the repository:
    ```bash
    git clone https://github.com/will-quast/cavetexas.git
    cd cavetexas
    ```
+3. Setup .env files for local development
 
-### Environment Configuration
+### Environment Variables
 
-1. Create a `.env` file in the project root:
-   ```bash
-   cp .env.example .env
-   ```
+The project uses different environment configurations for development and production. The environment variables are separated into different files to maintain security and proper configuration for each environment:
 
-2. Update the `.env` file with your secure values:
-   ```env
-   POSTGRES_PASSWORD=your-secure-password
-   JWT_SECRET=your-secure-jwt-token
-   ANON_KEY=your-anon-key
-   SERVICE_ROLE_KEY=your-service-role-key
-   SUPABASE_PUBLIC_URL=http://localhost:8000
-   ```
+1. `.env.local` - Used for local development with Supabase running in Docker
+2. `.env.production` - Used for production deployment with the live Supabase instance
 
-### Starting the Development Environment
+Required environment variables:
+
+```env
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your-project-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+
+# Supabase Service Configuration
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_PUBLIC_URL=your-project-url
+
+# Database Configuration
+POSTGRES_PASSWORD=your-postgres-password
+JWT_SECRET=your-jwt-secret
+```
+
+For local development, you can copy from `.env.example`:
+```bash
+cp .env.example .env.local
+```
+
+Note: For local development, the Supabase instance uses hardcoded keys for the anon and service roles. In production, you'll need to use the actual keys from our Supabase project settings.
+
+### Starting the dev environment in Docker
 
 1. Build and start all services:
    ```bash
@@ -265,7 +191,7 @@ The project uses Docker Compose for the development environment, providing a con
    docker-compose logs -f
    ```
 
-### Stopping the Development Environment
+### Stopping the dev environment in Docker
 
 1. Stop all services:
    ```bash
@@ -298,36 +224,6 @@ The project uses Docker Compose for the development environment, providing a con
    # Access PostgreSQL
    docker-compose exec db psql -U postgres
    ```
-
-## Getting Started
-
-1. Open this project in VS Code with Dev Containers extension
-2. Allow VS Code to reopen in container
-3. Run the development server:
-   ```bash
-   npm run dev
-   ```
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
-
-## Next Steps
-
-1. ✅ Initialize Next.js project with TypeScript and Tailwind
-2. ✅ Set up project structure
-3. ✅ Begin implementing public pages
-4. 🔄 Complete remaining routes
-5. ⏳ Set up authentication with Supabase
-6. ⏳ Implement members area
-7. ⏳ Configure PDF management
-8. ⏳ Deploy to production
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Deploy on Hawk Host
-
-- [Hawk Host](https://hawkhost.com)
-- [Hawk Host Shared Web Hosting](https://www.hawkhost.com/shared-web-hosting/)
-- [How to Create a Node.JS Application](https://my.hawkhost.com/knowledgebase/230/How-to-Create-a-Node.JS-Application.html)
-- [How I Deploy a Next.js App to a CPANEL Web Host](https://medium.com/@dalem.krisnayana/how-i-deploy-a-next-js-app-to-a-cpanel-web-host-3e23b5abacef#:~:text=Uploading%20the%20project%20files%20to,Extracted%20the%20project%20zip%20file.)
 
 ## Database Structure
 
@@ -416,3 +312,62 @@ type Tables = Database["public"]["Tables"];
 // Type-safe database query
 const { data } = await supabase.from<Tables["members"]>("members").select("*");
 ```
+
+
+## Deploy on Hawk Host
+
+- [Hawk Host](https://hawkhost.com)
+- [Hawk Host Shared Web Hosting](https://www.hawkhost.com/shared-web-hosting/)
+- [How to Create a Node.JS Application](https://my.hawkhost.com/knowledgebase/230/How-to-Create-a-Node.JS-Application.html)
+- [How I Deploy a Next.js App to a CPANEL Web Host](https://medium.com/@dalem.krisnayana/how-i-deploy-a-next-js-app-to-a-cpanel-web-host-3e23b5abacef#:~:text=Uploading%20the%20project%20files%20to,Extracted%20the%20project%20zip%20file.)
+
+## License
+
+This project is licensed under the MIT License
+
+## Project Status
+
+### Completed
+
+- ✅ Project initialization with Next.js 14, TypeScript, and Tailwind CSS
+- ✅ Development environment setup with docker-compose
+- ✅ Navigation component with mobile responsiveness
+- ✅ Basic route structure
+- ✅ Content management system with WYSIWYG editor
+
+
+### In Progress
+
+- 🔄 Content migration
+- 🔄 Route implementation
+- ✅ Authentication setup with Supabase
+  - ✅ Supabase project created
+  - ✅ Environment variables configured
+  - ✅ Authentication middleware implemented
+  - ✅ Login/Register UI implementation
+  - ✅ Protected routes testing
+  - ✅ Member database integration
+
+### Pending
+
+- ⏳ Protected routes for members area
+  - ✅ Basic member profile display
+  - 🔄 Member profile management
+  - ⏳ Password reset functionality
+  - ⏳ Session management
+- ⏳ PDF management system
+- ⏳ Calendar integration
+- ⏳ Deployment configuration
+
+## Next Steps
+
+1. ✅ Initialize Next.js project with TypeScript and Tailwind
+2. ✅ Set up project structure
+3. ✅ Docker Compose setup with Supabase
+4. 🔄 WYSIWYG editor for public page content
+5. ⏳ Set up authentication with Supabase
+6. ⏳ Create members area page
+7. ⏳ Create members only PDF management and viewing pages (Texas Caver Magazine)
+8. ⏳ Create calendar page
+9. ⏳ Improve theme and styling
+8. ⏳ Deploy to production

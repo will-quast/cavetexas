@@ -1,84 +1,46 @@
-import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
-import { CookieOptions } from "@supabase/ssr";
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  });
+  const res = NextResponse.next();
+  const supabase = createMiddlewareClient({ req: request, res });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          });
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          });
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          });
-        },
-        remove(name: string) {
-          request.cookies.delete(name);
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          });
-          response.cookies.delete(name);
-        },
-      },
-    }
-  );
+  // Check if user is authenticated
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  try {
-    // Refresh session if expired - required for Server Components
-    await supabase.auth.getSession();
-
-    // Protected routes
-    if (request.nextUrl.pathname.startsWith("/members")) {
-      const {
-        data: { user },
-        error,
-      } = await supabase.auth.getUser();
-
-      if (error || !user) {
-        return NextResponse.redirect(new URL("/login", request.url));
-      }
+  // Protected routes
+  if (request.nextUrl.pathname.startsWith('/editor')) {
+    if (!session) {
+      return NextResponse.redirect(new URL('/login', request.url));
     }
 
-    return response;
-  } catch (error) {
-    console.error("Auth error:", error);
-    return NextResponse.redirect(new URL("/login", request.url));
+    // Check if user is an editor
+    const { data: member } = await supabase
+      .from('members')
+      .select('editor')
+      .eq('user_id', session.user.id)
+      .single();
+
+    if (!member?.editor) {
+      return NextResponse.redirect(new URL('/members', request.url));
+    }
   }
+
+  return res;
 }
 
 export const config = {
   matcher: [
     /*
-     * Match all request paths except:
+     * Match all request paths except for the ones starting with:
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public folder
      */
-    "/((?!_next/static|_next/image|favicon.ico|public/).*)",
+    '/((?!_next/static|_next/image|favicon.ico|public).*)',
   ],
 };

@@ -1,87 +1,52 @@
-import {
-  getPageContent,
-  getAllContent,
-  ContentNotFoundError,
-} from "@/lib/markdown";
-import { notFound } from "next/navigation";
-import { Suspense } from "react";
+'use client';
 
-export async function generateStaticParams() {
-  const pages = await getAllContent("pages");
-  return pages.map((page) => ({
-    slug: page.slug,
-  }));
-}
+import { useQuery } from '@tanstack/react-query';
+import { useSupabase } from '@/utils/supabase/SupabaseContext';
+import type { Page } from '@/types';
 
-type Props = {
-  params: Promise<{ slug: string }> | { slug: string };
-};
+export default function Page({ params }: { params: { slug: string } }) {
+  const supabase = useSupabase();
 
-export async function generateMetadata({ params }: Props) {
-  const resolvedParams = await params;
+  const { data: page, isLoading } = useQuery({
+    queryKey: ['page', params.slug],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('pages')
+        .select('*')
+        .eq('slug', params.slug)
+        .single();
+      return data as Page;
+    },
+  });
 
-  try {
-    const { frontmatter } = await getPageContent("pages", resolvedParams.slug);
-    return {
-      title: `${frontmatter.title} | Texas Speleological Association`,
-      description: frontmatter.description,
-    };
-  } catch (error) {
-    if (error instanceof ContentNotFoundError) {
-      return {
-        title: "Page Not Found | Texas Speleological Association",
-        description: "The requested page could not be found.",
-      };
-    }
-    return {
-      title: "Error | Texas Speleological Association",
-      description: "An error occurred while loading this page.",
-    };
-  }
-}
-
-function LoadingContent() {
-  return (
-    <main className="container mx-auto px-4 py-8">
-      <div className="animate-pulse">
-        <div className="h-8 bg-gray-200 rounded w-3/4 mb-8"></div>
-        <div className="space-y-4">
-          <div className="h-4 bg-gray-200 rounded w-full"></div>
-          <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-          <div className="h-4 bg-gray-200 rounded w-4/6"></div>
-        </div>
-      </div>
-    </main>
-  );
-}
-
-async function PageContent({ slug }: { slug: string }) {
-  try {
-    const { frontmatter, content } = await getPageContent("pages", slug);
-
+  if (isLoading) {
     return (
       <main className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold mb-8">{frontmatter.title}</h1>
-        <div
-          className="prose prose-lg max-w-none"
-          dangerouslySetInnerHTML={{ __html: content }}
-        />
+        <div className="text-center">Loading...</div>
       </main>
     );
-  } catch (error) {
-    if (error instanceof ContentNotFoundError) {
-      notFound();
-    }
-    throw error;
   }
-}
 
-export default async function Page({ params }: Props) {
-  const resolvedParams = await params;
+  if (!page) {
+    return (
+      <main className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold mb-4">Page Not Found</h1>
+          <p className="text-gray-600">
+            The page you are looking for does not exist.
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   return (
-    <Suspense fallback={<LoadingContent />}>
-      <PageContent slug={resolvedParams.slug} />
-    </Suspense>
+    <main className="container mx-auto px-4 py-8">
+      <h1 className="text-4xl font-bold mb-8">{page.title}</h1>
+      <div
+        className="prose max-w-none"
+        dangerouslySetInnerHTML={{ __html: page.content }}
+      />
+    </main>
   );
 }
